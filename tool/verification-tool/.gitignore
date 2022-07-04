@@ -1,0 +1,5 @@
+tool/target/*
+tool/truffle/node_modules/*
+target/*
+out/*
+

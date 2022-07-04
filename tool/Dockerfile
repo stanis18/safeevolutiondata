@@ -10,6 +10,7 @@ RUN mkdir /home/front
 RUN mkdir /home/back
 
 RUN apt install docker.io -y
+RUN docker --version
 
 
 
