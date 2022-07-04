@@ -9,9 +9,11 @@ RUN corepack enable
 RUN mkdir /home/front
 RUN mkdir /home/back
 
-RUN apt install docker.io -y
-RUN docker --version
+# RUN apt install docker.io -y
+# RUN docker run -v /var/run/docker.sock:/var/run/docker.sock -ti docker
 
+# RUN docker --version
+# RUN docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d postgres -p 5432:5432
 
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -26,6 +28,8 @@ COPY ./front-verification-tool /home/front
 RUN cd /home/front && yarn install
 
 EXPOSE 3000
+EXPOSE 8000
+
 
 COPY run.sh /home/
 
