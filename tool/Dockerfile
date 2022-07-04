@@ -21,11 +21,11 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN apt install gcc -y
 RUN apt install pkg-config libssl-dev -y
 
-COPY ./verification-tool /home/back
-RUN cd /home/back && cargo build
-
 COPY ./front-verification-tool /home/front
 RUN cd /home/front && yarn install
+
+COPY ./verification-tool /home/back
+RUN cd /home/back && cargo +nightly build
 
 EXPOSE 3000
 EXPOSE 8000
