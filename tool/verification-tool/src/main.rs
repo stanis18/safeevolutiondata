@@ -21,39 +21,47 @@ use web3::{types::{Address}};
 use std::str::FromStr;
 use std::fs;
 
+#[options("/listupgrades/<_wallet_address>")]
+fn list_upgrades_options(_wallet_address: String){}
+
 #[get("/listupgrades/<wallet_address>")]
 fn list_upgrades(wallet_address: String) -> Result<Json<Vec<Logs>>, BadRequest<String>> {
     let logs = select_specifications(&wallet_address).unwrap();
     Ok(Json(logs))
 }
 
+#[options("/getconstructorarguments")]
+fn get_constructor_arguments_options(){}
+
 #[post("/getconstructorarguments", format = "json", data = "<payload>")]
 fn get_constructor_arguments(payload: Json<ContructorArguments>) -> Result<Json<Vec<AssignedVariable>>, BadRequest<String>> {
     
-    for file in &payload.implementation_files {
-        write_file(&file.content, &file.name);
-    }
-    let impl_url = format!("contracts/input/{}", &payload.file_to_be_verified);
-    let imp = get_implementation(Path::new(&impl_url));
+    // for file in &payload.implementation_files {
+    //     write_file(&file.content, &file.name);
+    // }
+    // let impl_url = format!("contracts/input/{}", &payload.file_to_be_verified);
+    // let imp = get_implementation(Path::new(&impl_url));
     
-    if let Err(error) = &imp {
-       return Err(BadRequest(Some(error.to_string())));
-    }
+    // if let Err(error) = &imp {
+    //    return Err(BadRequest(Some(error.to_string())));
+    // }
 
-    let constructor_arguments = get_number_argument_constructor(&imp.unwrap()).unwrap();
+    // let constructor_arguments = get_number_argument_constructor(&imp.unwrap()).unwrap();
 
     let mut parameters_and_values: Vec<AssignedVariable> = Vec::new();
 
-    for i in 0..constructor_arguments.len() {
-        let variable_value = AssignedVariable {
-            variable_declaration: constructor_arguments[i].clone(),
-            variable_value: "".to_owned(),
-        };
-        parameters_and_values.push(variable_value);
-    }
+    // for i in 0..constructor_arguments.len() {
+    //     let variable_value = AssignedVariable {
+    //         variable_declaration: constructor_arguments[i].clone(),
+    //         variable_value: "".to_owned(),
+    //     };
+    //     parameters_and_values.push(variable_value);
+    // }
     Ok(Json(parameters_and_values))
 }
 
+#[options("/getcontract")]
+fn get_contract_options() {}
 
 #[post("/getcontract", format = "json", data = "<payload>")]
 async fn get_contract(payload: Json<DeployContract>) -> Result<Json<Vec<ContractCompiled>>, BadRequest<String>> {
@@ -107,6 +115,8 @@ async fn get_contract(payload: Json<DeployContract>) -> Result<Json<Vec<Contract
     Ok(Json(list))
 }
 
+#[options("/upgradecontract/<_author_wallet>/<_chain_id>")]
+fn upgrade_contract_file_options(_author_wallet:String, _chain_id:String){} 
 
 #[post("/upgradecontract/<author_wallet>/<chain_id>", format = "json", data = "<payload>")]
 async fn upgrade_contract_file(author_wallet:String, chain_id:String, payload:Json<UpgradeContract>) -> Result<Json<Vec<ContractCompiled>>, BadRequest<String>> {
@@ -151,6 +161,9 @@ async fn upgrade_contract_file(author_wallet:String, chain_id:String, payload:Js
 
     Ok(Json(list))
 }
+
+#[options("/savelog")]
+fn save_log_options() {}
 
 #[post("/savelog", format = "json", data = "<payload>")]
 fn save_log(payload: Json<Logs>) -> Result<(), BadRequest<String>> {
@@ -212,10 +225,15 @@ fn rocket() -> _ {
     rocket::build()
     .attach(CORS)
     .mount("/", routes![list_upgrades])
+    .mount("/", routes![list_upgrades_options])
     .mount("/", routes![get_constructor_arguments])
+    .mount("/", routes![get_constructor_arguments_options])
     .mount("/", routes![upgrade_contract_file])
+    .mount("/", routes![upgrade_contract_file_options])
     .mount("/", routes![get_contract])
+    .mount("/", routes![get_contract_options])
     .mount("/", routes![save_log])
+    .mount("/", routes![save_log_options])
 }
 
 
@@ -279,11 +297,7 @@ impl Fairing for CORS {
         response.set_header(Header::new("Access-Control-Allow-Origin", "*"));
         response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
         response.set_header(Header::new("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT"));
-        response.set_header(Header::new("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers"));    
-
-        if response.status() == Status::NotFound && request.method() == Method::Options {
-            response.set_status(Status::NoContent);
-        }
+        response.set_header(Header::new("Access-Control-Allow-Headers", "*"));    
     }
 }
 
