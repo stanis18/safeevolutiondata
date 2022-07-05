@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:focal
 
 RUN apt update
 
@@ -13,21 +13,14 @@ RUN mkdir /home/front
 COPY ./front-verification-tool /home/front
 RUN cd /home/front && yarn install
 
-# RUN apt install docker.io -y
-# RUN docker run -v /var/run/docker.sock:/var/run/docker.sock -ti docker
-
-# RUN docker --version
-# RUN docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d postgres -p 5432:5432
-
-
-
 ### Back
 RUN mkdir /home/back
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN apt install gcc -y
-RUN apt install pkg-config libssl-dev -y
+RUN apt update
+RUN DEBIAN_FRONTEND="noninteractive" apt install gcc -y
+RUN DEBIAN_FRONTEND="noninteractive" apt install pkg-config libssl-dev -y
 # RUN rustup default nightly
 
 ## SOLC-VERIFY
@@ -60,7 +53,7 @@ ENV PATH="${PATH}:/root/.dotnet/tools"
 # Get and compile solc-verify
 RUN git clone https://github.com/SRI-CSL/solidity.git \
   && cd solidity \
-  && git checkout boogie \
+  && git checkout 0.7 \
   && mkdir -p build \
   && cd build \
   && cmake .. -DUSE_Z3=Off -DUSE_CVC4=Off \
@@ -70,6 +63,15 @@ RUN git clone https://github.com/SRI-CSL/solidity.git \
 RUN wget https://github.com/ethereum/solidity/releases/download/v0.5.17/solc-static-linux
 RUN mv solc-static-linux /home/solc-static-linux-0.5.17
 RUN chmod +x /home/solc-static-linux-0.5.17
+
+RUN curl --silent "https://api.github.com/repos/Z3Prover/z3/releases/36678822" | grep browser_download_url | grep -E 'ubuntu' | cut -d '"' -f 4 | wget -qi - -O z3.zip \
+  && unzip -p z3.zip '*bin/z3' > /usr/local/bin/z3 \
+  && chmod a+x /usr/local/bin/z3
+
+# Postgresql
+RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+RUN apt update && apt install -y postgresql-14
 
 COPY ./verification-tool /home/back
 RUN cd /home/back && cargo build

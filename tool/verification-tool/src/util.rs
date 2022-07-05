@@ -190,8 +190,8 @@ fn string_to_static_str(s: String) -> &'static str {
 
 pub fn generate_ast_contract(file_name: &str) -> Result <(), String> {
     let path = env::current_dir().unwrap();
-    let command = format!("docker run --rm -v {}/contracts/input:/sources ethereum/solc:0.5.17 -o sources --ast-compact-json  /sources/{} --overwrite",
-    path.to_str().unwrap(), &file_name);
+    let command = format!("/home/solc-static-linux-0.5.17 -o {}/contracts/input --ast-compact-json  {}/contracts/input/{} --overwrite",
+    path.to_str().unwrap(),path.to_str().unwrap(), &file_name);
 
     let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
     .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
@@ -206,7 +206,7 @@ pub fn generate_ast_contract(file_name: &str) -> Result <(), String> {
 
 pub fn verify_contract(merged_contract_file: String) -> Result <String, String> {
     let path = env::current_dir().unwrap();
-    let command = format!("docker run --rm -v {}/contracts/input:/contracts solc-verify:0.7 /contracts/{}",
+    let command = format!("solc-verify.py --parallel 1 --solver z3 {}/contracts/input/{}",
     path.to_str().unwrap(), merged_contract_file);
 
     let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
@@ -222,8 +222,8 @@ pub fn verify_contract(merged_contract_file: String) -> Result <String, String> 
 
 pub fn generate_compiled_contract(file_name: &str) -> Result <(), String> {
     let path = env::current_dir().unwrap();
-    let command = format!("docker run --rm -v {}/contracts/input:/sources ethereum/solc:0.5.17 -o sources --bin --abi  /sources/{} --overwrite",
-    path.to_str().unwrap(), &file_name);
+    let command = format!("/home/solc-static-linux-0.5.17 -o {}/contracts/input --bin --abi  {}/contracts/input/{} --overwrite",
+    path.to_str().unwrap(), path.to_str().unwrap(), &file_name);
     
     let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
     .stdout(Stdio::piped()).spawn().expect("echo command failed to start");

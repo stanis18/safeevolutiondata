@@ -36,27 +36,27 @@ fn get_constructor_arguments_options(){}
 #[post("/getconstructorarguments", format = "json", data = "<payload>")]
 fn get_constructor_arguments(payload: Json<ContructorArguments>) -> Result<Json<Vec<AssignedVariable>>, BadRequest<String>> {
     
-    // for file in &payload.implementation_files {
-    //     write_file(&file.content, &file.name);
-    // }
-    // let impl_url = format!("contracts/input/{}", &payload.file_to_be_verified);
-    // let imp = get_implementation(Path::new(&impl_url));
+    for file in &payload.implementation_files {
+        write_file(&file.content, &file.name);
+    }
+    let impl_url = format!("contracts/input/{}", &payload.file_to_be_verified);
+    let imp = get_implementation(Path::new(&impl_url));
     
-    // if let Err(error) = &imp {
-    //    return Err(BadRequest(Some(error.to_string())));
-    // }
+    if let Err(error) = &imp {
+       return Err(BadRequest(Some(error.to_string())));
+    }
 
-    // let constructor_arguments = get_number_argument_constructor(&imp.unwrap()).unwrap();
+    let constructor_arguments = get_number_argument_constructor(&imp.unwrap()).unwrap();
 
     let mut parameters_and_values: Vec<AssignedVariable> = Vec::new();
 
-    // for i in 0..constructor_arguments.len() {
-    //     let variable_value = AssignedVariable {
-    //         variable_declaration: constructor_arguments[i].clone(),
-    //         variable_value: "".to_owned(),
-    //     };
-    //     parameters_and_values.push(variable_value);
-    // }
+    for i in 0..constructor_arguments.len() {
+        let variable_value = AssignedVariable {
+            variable_declaration: constructor_arguments[i].clone(),
+            variable_value: "".to_owned(),
+        };
+        parameters_and_values.push(variable_value);
+    }
     Ok(Json(parameters_and_values))
 }
 
