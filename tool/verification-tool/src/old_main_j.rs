@@ -61,7 +61,7 @@ pub async fn verify_deploy_contract(impl_path_input: &Path, spec_path_input: &Pa
 pub fn get_specification(spec_url: &Path) -> Result<Specification, String>{
 
     let spec_path_output = Path::new("contracts/input").join(&spec_url.file_name().unwrap().to_str().unwrap());    
-    fs::copy(&spec_url.to_path_buf(), &spec_path_output);
+    // fs::copy(&spec_url.to_path_buf(), &spec_path_output);
 
     generate_ast_contract(spec_path_output.file_name().unwrap().to_str().unwrap());
 
@@ -74,7 +74,7 @@ pub fn get_specification(spec_url: &Path) -> Result<Specification, String>{
 pub fn get_implementation(impl_url: &Path) -> Result<Implementation, String>{
 
     let impl_path_output = Path::new("contracts/input").join(&impl_url.file_name().unwrap().to_str().unwrap());
-    fs::copy(&impl_url.to_path_buf(), &impl_path_output);
+    // fs::copy(&impl_url.to_path_buf(), &impl_path_output);
 
     generate_ast_contract(impl_path_output.file_name().unwrap().to_str().unwrap());
 

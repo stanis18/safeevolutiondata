@@ -189,11 +189,10 @@ fn string_to_static_str(s: String) -> &'static str {
 
 
 pub fn generate_ast_contract(file_name: &str) -> Result <(), String> {
-    let path = env::current_dir().unwrap();
-    let command = format!("/home/solc-static-linux-0.5.17 -o {}/contracts/input --ast-compact-json  {}/contracts/input/{} --overwrite",
-    path.to_str().unwrap(),path.to_str().unwrap(), &file_name);
-
-    let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
+    // let path = env::current_dir().unwrap();
+    let command = format!("/home/solc-static-linux-0.5.17 -o /home/back/contracts/input --ast-compact-json  /home/back/contracts/input/{} --overwrite", &file_name);
+    println!("Command is {}", command);
+    let com = Command::new("sh").args(["-c", &command]).stdin(Stdio::piped())
     .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
 
     let mut answer = String::new();
@@ -206,10 +205,9 @@ pub fn generate_ast_contract(file_name: &str) -> Result <(), String> {
 
 pub fn verify_contract(merged_contract_file: String) -> Result <String, String> {
     let path = env::current_dir().unwrap();
-    let command = format!("solc-verify.py --parallel 1 --solver z3 {}/contracts/input/{}",
-    path.to_str().unwrap(), merged_contract_file);
-
-    let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
+    let command = format!("solc-verify.py --parallel 1 --solver z3 /home/back/contracts/input/{}", merged_contract_file);
+    println!("Command is {}", command);
+    let com = Command::new("sh").args(["-c", &command]).stdin(Stdio::piped())
     .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
 
     let mut answer = String::new();
@@ -222,10 +220,9 @@ pub fn verify_contract(merged_contract_file: String) -> Result <String, String> 
 
 pub fn generate_compiled_contract(file_name: &str) -> Result <(), String> {
     let path = env::current_dir().unwrap();
-    let command = format!("/home/solc-static-linux-0.5.17 -o {}/contracts/input --bin --abi  {}/contracts/input/{} --overwrite",
-    path.to_str().unwrap(), path.to_str().unwrap(), &file_name);
-    
-    let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
+    let command = format!("/home/solc-static-linux-0.5.17 -o /home/back/contracts/input --bin --abi  /home/back/contracts/input/{} --overwrite", &file_name);
+    println!("Command is {}", command);
+    let com = Command::new("sh").args(["-c", &command]).stdin(Stdio::piped())
     .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
 
     let mut answer = String::new();

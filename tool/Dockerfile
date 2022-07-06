@@ -76,6 +76,8 @@ RUN apt update && apt install -y postgresql-14
 COPY ./verification-tool /home/back
 RUN cd /home/back && cargo build
 
+RUN mkdir /home/back/contracts/input
+
 EXPOSE 3000
 EXPOSE 8000
 
