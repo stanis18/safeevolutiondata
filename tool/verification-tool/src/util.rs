@@ -1,29 +1,14 @@
 
 use crate::parser::{Implementation,VariableDeclaration};
 use std::str::FromStr;
-use web3::{
-    ethabi::ethereum_types::{U256, H32, H160, H256},
-    types::{Address, TransactionRequest},
-    transports::Http,
-    contract::{Contract, Options},
-    Web3
-};
-
-use hex;
-use async_std::task;
-use std::{collections::HashMap, hash::Hash, time};
 use std::env;
 use std::fs::File;
-use std::convert::TryInto;
 use std::str;
 use std::{path::Path, process::{Command, Stdio}};
-use std::io::{self, prelude::*, SeekFrom, Read};
+use std::io::{self, prelude::*, Read};
 use std::fs;
-use ethabi::{Token, Param, Function, ParamType};
-use web3::types::Bytes;
-// use crate::deployer::{get_connection};
+use ethabi::{Token};
 use rocket::serde::{Serialize, Deserialize};
-use std::future::Future;
 
 #[derive(Debug,Clone, Serialize,Deserialize)]
 pub struct AssignedVariable {
@@ -61,6 +46,19 @@ pub fn get_value(assigned_variable: &AssignedVariable) -> Result<Token, String> 
         _ => Err("There is no match for this value".to_owned()),
     }
 }
+
+// println!("file_name -> {:?}", file_name);
+// println!("text -> {:?}", text);
+
+// let file = File::create(Path::new("contracts/input").join(&file_name).as_path());
+
+// if let Err(error) = &file {
+//     println!("{:?}", "error write file");
+//     println!("{:?}", error);
+// }
+
+// let result = file.unwrap().write_all(&text.as_bytes()).unwrap();
+// println!("{:?}", result);
 
 pub fn write_file(text: &String, file_name: &String) {
 
@@ -117,55 +115,6 @@ pub fn copy_dir_contents(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Re
     Ok(())
 }
 
-// pub async fn deploy_contract_blockchain<'a>(from:&'a H160, parameters_and_values: &Vec<AssignedVariable>, path_bin:&'a Path, path_abi:&'a Path) ->  Result<H160, String> {
-
-//     let proxy_bin = get_compiled_files(&path_bin).unwrap();
-
-//     let code =  hex::decode(&proxy_bin).map_err( |_| {"Error parsing bin".to_owned()} ).unwrap();
-
-//     let json = get_compiled_files(&path_abi).unwrap();
-//     let abi = ethabi::Contract::load(json.as_bytes()).unwrap();
-
-//     let params = config_contructor_parameters(&parameters_and_values)?;
-
-//     let data = match (abi.constructor(), params.is_empty()) {
-//         (None, false) => return Err("The constructor is not defined in the ABI.".to_owned()),
-//         (None, true) => code,
-//         (Some(constructor), _) => constructor.encode_input(code, &params).unwrap(),
-//     };
-
-//     let contract_address = send_contract_blockchain(&from, data).await;
-
-//     Ok(contract_address.unwrap())
-// }
-
-// pub async fn send_contract_blockchain(from:&H160, encoded_data: Vec<u8>) -> Result<H160, String>{
-    
-//     let web3:Web3<Http> = get_connection().unwrap();
-
-//     let tx_request = TransactionRequest {
-//         from: *from,
-//         to: None,
-//         gas: Some(3_000_000.into()),
-//         gas_price: None,
-//         value: None,
-//         data: Some(Bytes(encoded_data)),
-//         nonce: None,
-//         condition: None,
-//         transaction_type: None,
-//         access_list: None,
-//     };
-
-//     let receipt = web3.send_transaction_with_confirmation(tx_request, time::Duration::from_secs(7), 0).await.unwrap();
-
-//     match receipt.status {
-//         Some(status) if status == 0.into() => return Err("The contract could not be deployed".to_owned()),
-//         _ => match receipt.contract_address {
-//             Some(address) => Ok(address),
-//             None => return Err("The contract could not be deployed".to_owned()),
-//         },
-//     }
-// }
 
 pub fn config_contructor_parameters(assigned_variables: &Vec<AssignedVariable>)  -> Result <Vec<Token>, String> {
 
@@ -188,51 +137,100 @@ fn string_to_static_str(s: String) -> &'static str {
 }
 
 
-pub fn generate_ast_contract(file_name: &str) -> Result <(), String> {
-    let path = env::current_dir().unwrap();
-    let command = format!("docker run --rm -v {}/contracts/input:/sources ethereum/solc:0.5.17 -o sources --ast-compact-json  /sources/{} --overwrite",
-    path.to_str().unwrap(), &file_name);
+pub fn generate_ast_contract(file_name: &str) -> Result <(), String> { 
+    
+    // if cfg!(target_os = "windows") {
+    //     let path = env::current_dir().unwrap();
+    //     let command = format!("docker run --rm -v {}/contracts/input:/sources ethereum/solc:0.5.17 -o sources --ast-compact-json  /sources/{} --overwrite",
+    //     path.to_str().unwrap(), &file_name);
+    
+    //     let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
+    //     .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
+    
+    //     let mut answer = String::new();
+    //     match com.stdout.unwrap().read_to_string(&mut answer) {
+    //         Err(why) => panic!("Couldn't generate ast tree: {}", why),
+    //         Ok(_) => print!("Tree generated with sucess:\n{}", answer),
+    //     }
+    
+    // } else {
 
-    let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
-    .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
+        let command = format!("/home/solc-static-linux-0.5.17 -o /home/back/contracts/input --ast-compact-json  /home/back/contracts/input/{} --overwrite", &file_name);
+        println!("Command is {}", command);
+        let com = Command::new("sh").args(["-c", &command]).stdin(Stdio::piped())
+        .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
 
-    let mut answer = String::new();
-    match com.stdout.unwrap().read_to_string(&mut answer) {
-        Err(why) => panic!("Couldn't generate ast tree: {}", why),
-        Ok(_) => print!("Tree generated with sucess:\n{}", answer),
-    }
-   Ok(())
+        let mut answer = String::new();
+        match com.stdout.unwrap().read_to_string(&mut answer) {
+            Err(why) => panic!("Couldn't generate ast tree: {}", why),
+            Ok(_) => print!("Tree generated with sucess:\n{}", answer),
+        }
+    // }
+   
+    Ok(())
 }
 
 pub fn verify_contract(merged_contract_file: String) -> Result <String, String> {
-    let path = env::current_dir().unwrap();
-    let command = format!("docker run --rm -v {}/contracts/input:/contracts solc-verify:0.7 /contracts/{}",
-    path.to_str().unwrap(), merged_contract_file);
+  
+    // if cfg!(target_os = "windows") {
+    //     let path = env::current_dir().unwrap();
+    //     let command = format!("docker run --rm -v {}/contracts/input:/contracts solc-verify:0.7 /contracts/{}",
+    //     path.to_str().unwrap(), merged_contract_file);
 
-    let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
-    .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
+    //     let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
+    //     .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
 
-    let mut answer = String::new();
-    match com.stdout.unwrap().read_to_string(&mut answer) {
-        Err(why) => return Err(format!("Couldn't verify the contract {} :", why)),
-        Ok(_) => Ok(answer)
-    }
+    //     let mut answer = String::new();
+    //     match com.stdout.unwrap().read_to_string(&mut answer) {
+    //         Err(why) => return Err(format!("Couldn't verify the contract {} :", why)),
+    //         Ok(_) => Ok(answer)
+    //     }
+
+    // } else {
+        let path = env::current_dir().unwrap();
+        let command = format!("solc-verify.py --parallel 1 --solver z3 /home/back/contracts/input/{}", merged_contract_file);
+        println!("Command is {}", command);
+        let com = Command::new("sh").args(["-c", &command]).stdin(Stdio::piped())
+        .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
+
+        let mut answer = String::new();
+        match com.stdout.unwrap().read_to_string(&mut answer) {
+            Err(why) => return Err(format!("Couldn't verify the contract {} :", why)),
+            Ok(_) => Ok(answer)
+        }
+    // }
 }
 
 
 pub fn generate_compiled_contract(file_name: &str) -> Result <(), String> {
-    let path = env::current_dir().unwrap();
-    let command = format!("docker run --rm -v {}/contracts/input:/sources ethereum/solc:0.5.17 -o sources --bin --abi  /sources/{} --overwrite",
-    path.to_str().unwrap(), &file_name);
-    
-    let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
-    .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
 
-    let mut answer = String::new();
-    match com.stdout.unwrap().read_to_string(&mut answer) {
-        Err(why) => panic!("Couldn't compile the contract {} : {}", why, file_name),
-        Ok(_) => print!("Contract compiled with sucess:\n{}", answer),
-    }
+    // if cfg!(target_os = "windows") {
+    //     let path = env::current_dir().unwrap();
+    //     let command = format!("docker run --rm -v {}/contracts/input:/sources ethereum/solc:0.5.17 -o sources --bin --abi  /sources/{} --overwrite",
+    //     path.to_str().unwrap(), &file_name);
+        
+    //     let com = Command::new("cmd").args(&["/C", &command]).stdin(Stdio::piped())
+    //     .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
+
+    //     let mut answer = String::new();
+    //     match com.stdout.unwrap().read_to_string(&mut answer) {
+    //         Err(why) => panic!("Couldn't compile the contract {} : {}", why, file_name),
+    //         Ok(_) => print!("Contract compiled with sucess:\n{}", answer),
+    //     }
+
+    // } else {
+       
+        let command = format!("/home/solc-static-linux-0.5.17 -o /home/back/contracts/input --bin --abi  /home/back/contracts/input/{} --overwrite", &file_name);
+        println!("Command is {}", command);
+        let com = Command::new("sh").args(["-c", &command]).stdin(Stdio::piped())
+        .stdout(Stdio::piped()).spawn().expect("echo command failed to start");
+    
+        let mut answer = String::new();
+        match com.stdout.unwrap().read_to_string(&mut answer) {
+            Err(why) => panic!("Couldn't compile the contract {} : {}", why, file_name),
+            Ok(_) => print!("Contract compiled with sucess:\n{}", answer),
+        } 
+    // }
    Ok(())
 }
 

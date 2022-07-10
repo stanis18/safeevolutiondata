@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import API from '../service/API';
-import Web3 from "./Web3";
 import Backdrop from '@material-ui/core/Backdrop';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
+import { Toast } from 'primereact/toast';
 
 const useStyles = makeStyles((theme) => ({
     backdrop: {
@@ -20,17 +20,9 @@ const TableDemo = () => {
     const [account, setAccount] = useState('');
     const [loading, setLoading] = useState(false);
     const classes=useStyles();
+    const toast = useRef();
     
     useEffect(() => { list_upgrades(); }, []);
-
-    useEffect(() => {
-        async function fetchAccounts() {
-            let web3 = await Web3();
-            let accounts = await web3.eth.getAccounts();
-            setAccount(accounts[0]);
-          }
-          fetchAccounts();
-    }, []);
 
     const formatDate = (value) => {
         if(value.created_at ){
@@ -41,16 +33,29 @@ const TableDemo = () => {
         }
     }
 
+    function show_toast(severity, summary) {
+        toast.current.show({ severity: severity , summary: summary, detail: '', life: 6000 });
+    }
 
     function list_upgrades(){
-        setLoading(true);
-        API.get(`/listupgrades/${window.ethereum.selectedAddress}`).then(async res => {
-            setLogs(res.data);
+        try {
+        
+            if(window.ethereum == undefined){
+                show_toast('error', 'Your wallet is not connected');
+                return;
+            }
+            setLoading(true);
+            API.get(`/listupgrades/${window.ethereum.selectedAddress}`).then(async res => {
+                setLogs(res.data);
+                setLoading(false);
+            }).catch(error => {
+                show_toast('error', 'Your upgrades could not be fetched');
+                setLoading(false);
+            });
+        } catch (error){
+            show_toast('error', 'There was an unexpected error');
             setLoading(false);
-        }).catch(error => {
-            console.log("failed")
-            setLoading(false);
-        });
+        }
     }
 
     return (
@@ -60,7 +65,8 @@ const TableDemo = () => {
                             <CircularProgress color="inherit" />
                         </Backdrop> : loading}
 
-        <div className="col-12">    
+        <div className="col-12">
+        <Toast ref={toast} />    
             <div className="card">
             <h5>My Upgrades</h5>
             <DataTable value={logs} rows={5} paginator responsiveLayout="scroll">

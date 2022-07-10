@@ -2,12 +2,10 @@
 
 use crate::{db::{select_specifications, select_on_table, insert_on_table, Logs}};
 use crate::{util::{write_file,get_number_argument_constructor,AssignedVariable, get_compiled_files, delete_dir_contents, copy_dir_contents}};
-// use crate::{deployer::{get_connection,get_compiled_files, get_assigned_variable, pad_to_bytes32}};
 use crate::{old_main_j::{verify_deploy_contract, upgrade_contract, get_specification, get_implementation}};
 mod db;
 mod util;
 mod parser;
-mod deployer;
 mod checker;
 mod proxy;
 mod old_main_j;
@@ -19,7 +17,6 @@ use rocket::response::status::BadRequest;
 use std::{path::Path};
 use web3::{types::{Address}};
 use std::str::FromStr;
-use std::fs;
 
 #[get("/listupgrades/<wallet_address>")]
 fn list_upgrades(wallet_address: String) -> Result<Json<Vec<Logs>>, BadRequest<String>> {
@@ -30,17 +27,23 @@ fn list_upgrades(wallet_address: String) -> Result<Json<Vec<Logs>>, BadRequest<S
 #[post("/getconstructorarguments", format = "json", data = "<payload>")]
 fn get_constructor_arguments(payload: Json<ContructorArguments>) -> Result<Json<Vec<AssignedVariable>>, BadRequest<String>> {
     
+    println!("text -> {:?}", "1");
     for file in &payload.implementation_files {
+        println!("file.content -> {:?}", &file.content);
         write_file(&file.content, &file.name);
     }
     let impl_url = format!("contracts/input/{}", &payload.file_to_be_verified);
+    println!("get_implementation -> {:?}", " begin");
     let imp = get_implementation(Path::new(&impl_url));
+    println!("get_implementation -> {:?}", " end");
     
     if let Err(error) = &imp {
        return Err(BadRequest(Some(error.to_string())));
     }
 
+    println!("get_number_argument_constructor -> {:?}", "begin");
     let constructor_arguments = get_number_argument_constructor(&imp.unwrap()).unwrap();
+    println!("get_number_argument_constructor -> {:?}", "end");
 
     let mut parameters_and_values: Vec<AssignedVariable> = Vec::new();
 
@@ -104,6 +107,8 @@ async fn get_contract(payload: Json<DeployContract>) -> Result<Json<Vec<Contract
 
     let list: Vec<ContractCompiled> = vec![contract, proxy, registry];
 
+    delete_dir_contents();
+
     Ok(Json(list))
 }
 
@@ -147,7 +152,9 @@ async fn upgrade_contract_file(author_wallet:String, chain_id:String, payload:Js
     let proxy =  ContractCompiled { category: "proxy".to_string(), abi: proxy_abi.unwrap(), 
                     bin: proxy_bin.unwrap(), file: "".to_string(), address: log[0].proxy_address.to_string() };
 
-    let list: Vec<ContractCompiled> = vec![contract, registry, proxy ];  
+    let list: Vec<ContractCompiled> = vec![contract, registry, proxy ]; 
+    
+    delete_dir_contents();
 
     Ok(Json(list))
 }
@@ -165,48 +172,6 @@ fn save_log(payload: Json<Logs>) -> Result<(), BadRequest<String>> {
 }
 
 
-// #[post("/deploycontract/<wallet_address>", format = "json", data = "<payload>")]
-// async fn deploy_contract_file(wallet_address: String, payload: Json<DeployContract>) -> Result<(), BadRequest<String>> {
-    
-//     write_file(&payload.specification_file.content,  &payload.specification_file.name);
-
-//     for file in &payload.implementation_files {
-//         write_file(&file.content, &file.name);
-//     }
-
-//     let spec_url = format!("contracts/input/{}", &payload.specification_file.name);
-//     let spec = get_specification(Path::new(&spec_url)).unwrap();
-
-//     let impl_url = format!("contracts/input/{}", &payload.file_to_be_verified);
-//     let imp = get_implementation(Path::new(&impl_url)).unwrap();
-
-//     let wallet_address = Address::from_str(wallet_address.as_str()).unwrap();
-
-//     let result = verify_deploy_contract(Path::new(&impl_url), Path::new(&spec_url), &imp, &spec, &payload.specification_id,  &mut payload.constructor_arguments.clone()).await;
-
-//     if let Err(error) = &result {
-//         return Err(BadRequest(Some(error.to_string())));
-//     }
-//     Ok(())
-// }
-
-// #[post("/upgradecontract/<wallet_address>", format = "json", data = "<payload>")]
-// async fn upgrade_contract_file(wallet_address: String, payload: Json<UpgradeContract>) -> Result<(), BadRequest<String>> {
-    
-//     for file in &payload.implementation_files {
-//         write_file(&file.content, &file.name);
-//     }
-
-//     let impl_url = format!("contracts/input/{}", &payload.file_to_be_verified);
-//     let wallet_address = Address::from_str(wallet_address.as_str()).unwrap();
-//     let result = upgrade_contract(Path::new(&impl_url), &payload.specification_id, &wallet_address).await;
-
-//     if let Err(error) = &result {
-//         return Err(BadRequest(Some(error.to_string())));
-//     }
-//     Ok(())
-// }
-
 #[launch]
 fn rocket() -> _ {
     rocket::build()
@@ -218,12 +183,6 @@ fn rocket() -> _ {
     .mount("/", routes![save_log])
 }
 
-
-// #[derive(Serialize,Deserialize, Debug)]
-// pub struct ContractSpecCompiled {
-//     pub specification_file_32_bytes: [u8; 32],
-//     pub contracts_compiled: Vec<ContractCompiledFiles>, 
-// }
 
 #[derive(Serialize,Deserialize, Debug)]
 pub struct ContractCompiled {
@@ -287,11 +246,6 @@ impl Fairing for CORS {
     }
 }
 
-
-use web3::{
-    types::{H160,U256},
-    contract::{Contract, Options},
-};
 
 #[cfg(test)]
 mod tests {

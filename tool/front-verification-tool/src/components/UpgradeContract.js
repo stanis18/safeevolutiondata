@@ -28,7 +28,6 @@ const DeployContract = () => {
 
     const [filesImplementation, setFilesImplementation] = useState([]);
     const [specificationId, setSpecificationId] = useState('');
-    const [account, setAccount] = useState('');
     const toast = useRef();
     const [loading, setLoading] = useState(false);
     const [dropdownValue, setDropdownValue] = useState(null);
@@ -64,11 +63,15 @@ const DeployContract = () => {
       } 
 
 
-      async function teste() {
+      async function submit_form() {
+
+        if (check_data()) {
+            return;
+        } 
 
         const chainId = await window.ethereum.request({ method: 'eth_chainId', });
 
-        console.log('Connected Address ->', (await window.ethereum.request({method: 'eth_requestAccounts'}))[0]);
+        // console.log('Connected Address ->', (await window.ethereum.request({method: 'eth_requestAccounts'}))[0]);
         let web3 = new Web3(window.ethereum);
 
         // deploy contract
@@ -79,40 +82,61 @@ const DeployContract = () => {
             file_to_be_verified: dropdownValue.name,
          }
 
-        let contract = await API.post(`upgradecontract/${window.ethereum.selectedAddress}/${chainId}`, contracts);
+        try {
+            setLoading(true); 
+            let contract = await API.post(`upgradecontract/${window.ethereum.selectedAddress}/${chainId}`, contracts);
+            show_toast('info', 'Your was verified');
+            setLoading(false); 
 
-        let contract_converted = contract.data[0].bin;
-        const transactionParametersContract = { from: window.ethereum.selectedAddress, data: contract_converted, };
-        const txHashContract = await window.ethereum.request({ method: 'eth_sendTransaction', params: [transactionParametersContract], });
+            let contract_converted = contract.data[0].bin;
+            const transactionParametersContract = { from: window.ethereum.selectedAddress, data: contract_converted, };
+            const txHashContract = await window.ethereum.request({ method: 'eth_sendTransaction', params: [transactionParametersContract], });
+            
+            setLoading(true); 
+            await confirmEtherTransaction(txHashContract);
+            let trx_contract_receipt = await web3.eth.getTransactionReceipt(txHashContract);
+            show_toast('info', 'Your contract was deployed');
+            setLoading(false); 
 
-        await confirmEtherTransaction(txHashContract);
-        let trx_contract_receipt = await web3.eth.getTransactionReceipt(txHashContract);
+            // update registry
 
-        // update registry
+            let registy_contract = new web3.eth.Contract(JSON.parse(contract.data[1].abi), contract.data[1].address);
 
-        let registy_contract = new web3.eth.Contract(JSON.parse(contract.data[1].abi), contract.data[1].address);
+            let spec_id_bytes32 = web3.utils.asciiToHex(specificationId);
 
-        let spec_id_bytes32 = web3.utils.asciiToHex(specificationId);
+            // console.log('address -> ', trx_contract_receipt.contractAddress, 'spec_id ->',  spec_id_bytes32)
+            
+        setLoading(true); 
+        let response_new_mapping = await registy_contract.methods.new_mapping(trx_contract_receipt.contractAddress.trim(), spec_id_bytes32)  
+                                                .send({from: window.web3.currentProvider.selectedAddress, gasPrice: '2000000000000' });
+            show_toast('info', 'Your contract was updated');
+            setLoading(false); 
+            // update proxy proxy_abi
 
-        console.log('address -> ', trx_contract_receipt.contractAddress, 'spec_id ->',  spec_id_bytes32)
+            let proxy_contract = new web3.eth.Contract(JSON.parse(contract.data[2].abi), contract.data[2].address);
 
-       let response_new_mapping = await registy_contract.methods.new_mapping(trx_contract_receipt.contractAddress.trim(), spec_id_bytes32)  
-                                            .send({from: window.web3.currentProvider.selectedAddress, gasPrice: '2000000000000' });
+            setLoading(true); 
+            let response_upgrade = await proxy_contract.methods.upgrade(trx_contract_receipt.contractAddress.trim())  
+            .send({from: window.web3.currentProvider.selectedAddress, gasPrice: '2000000000000' });
+            show_toast('info', 'Your contract was updated');
+            setLoading(false); 
 
-        // update proxy proxy_abi
+            // let response_new_proxy = await proxy_contract.methods.get_selected().call();
+            // console.log('response_new_proxy -> ', response_new_proxy);
 
-        let proxy_contract = new web3.eth.Contract(JSON.parse(contract.data[2].abi), contract.data[2].address);
-
-        let response_upgrade = await proxy_contract.methods.upgrade(trx_contract_receipt.contractAddress.trim())  
-        .send({from: window.web3.currentProvider.selectedAddress, gasPrice: '2000000000000' });
-
-        let response_new_proxy = await proxy_contract.methods.get_selected().call();
-        console.log('response_new_proxy -> ', response_new_proxy);
-
+        } catch(error) {
+            show_toast('error', 'There was an unexpected error');
+            setLoading(false);             
+        }
       }
 
 
       function check_data() {
+        if(window.ethereum == undefined){
+            show_toast('error', 'Your wallet is not connected');
+            return;
+        }
+
         if (specificationId.length === 0 ){
             show_toast('error', 'You should type a specification id');
             return true;
@@ -128,25 +152,6 @@ const DeployContract = () => {
         return false;
       }
 
-      async function submit_form() {
-        if (check_data()) {
-            return;
-        }  
-        setLoading(true);
-        let contracts = {
-           implementation_files: filesImplementation, 
-           specification_id: specificationId,
-           file_to_be_verified: dropdownValue.name,
-        }
-        try {
-            await API.post(`upgradecontract/0x6519FEbb8b1A4618991d8E5bE03A130d0394A399`, contracts);
-            setLoading(false);
-            show_toast('success', 'The deployment was sucessful');
-        } catch (error) {
-            setLoading(false);
-            show_toast('error', 'The contract could not be upgraded');
-        }
-      }
 
     return (
         <div className="grid">
@@ -175,7 +180,7 @@ const DeployContract = () => {
                             <Dropdown value={dropdownValue} onChange={(e) => setDropdownValue(e.value)} options={filesImplementation} optionLabel="name" placeholder="Select" />
                         </div>
                         <div className="field col-12">
-                            <Button label="Submit" onClick={(e) => teste()} className="mr-2 mb-2"></Button>
+                            <Button label="Submit" onClick={(e) => submit_form()} className="mr-2 mb-2"></Button>
                         </div>
                         </div>
                 </div>

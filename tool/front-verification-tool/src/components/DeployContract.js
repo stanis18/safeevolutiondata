@@ -4,7 +4,6 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { Dropdown } from 'primereact/dropdown';
 import API from '../service/API';
-// import Web3 from "./Web3";
 import Backdrop from '@material-ui/core/Backdrop';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
@@ -30,7 +29,6 @@ const DeployContract = () => {
     const [filesSpecification, setFilesSpecification] = useState([]);
     const [filesImplementation, setFilesImplementation] = useState([]);
     const [specificationId, setSpecificationId] = useState('');
-    const [account, setAccount] = useState('');
     const toast = useRef();
     const [loading, setLoading] = useState(false);
     const [dropdownValue, setDropdownValue] = useState(null);
@@ -51,13 +49,6 @@ const DeployContract = () => {
                     setLoading(true); 
                     let result = await API.post(`getconstructorarguments`, contracts);
                     setConstructorArguments(result.data);
-                    // let mockArguments = [{"variable_declaration":{"visibility":"internal","typ":"uint256","name":"_a","storage_location":"default"},"variable_value":""},
-                    //                      {"variable_declaration":{"visibility":"internal","typ":"uint256","name":"_b","storage_location":"default"},"variable_value":""},
-                    //                      {"variable_declaration":{"visibility":"internal","typ":"bool","name":"_c","storage_location":"default"},"variable_value":""},
-                    //                      {"variable_declaration":{"visibility":"internal","typ":"address","name":"_d","storage_location":"default"},"variable_value":""},
-                    //                      {"variable_declaration":{"visibility":"internal","typ":"address","name":"_d","storage_location":"default"},"variable_value":""}
-                    //                     ]
-                    // setConstructorArguments(mockArguments);
                     setLoading(false); 
                 }
             } catch (error) {
@@ -98,8 +89,10 @@ const DeployContract = () => {
             return;
         }
 
-        console.log('Connected Address ->', (await window.ethereum.request({method: 'eth_requestAccounts'}))[0]);
+        // console.log('Connected Address ->', (await window.ethereum.request({method: 'eth_requestAccounts'}))[0]);
 
+        try {
+    
         let contracts = {
             specification_file: filesSpecification[0], 
             implementation_files: filesImplementation, 
@@ -107,16 +100,21 @@ const DeployContract = () => {
             constructor_arguments: constructorArguments,
             file_to_be_verified: dropdownValue ? dropdownValue.name : null,
          }
-
+        
+        setLoading(true); 
         let contract = await API.post(`getcontract`, contracts);
+        show_toast('info', 'Your was verified');
+        setLoading(false); 
 
-        // let web3 = new Web3(window.ethereum);
 
         const transactionParametersRegistry = { from: window.ethereum.selectedAddress, data: contract.data[2].bin, };
         const txHashRegistry = await window.ethereum.request({ method: 'eth_sendTransaction', params: [transactionParametersRegistry], });
-
+        
+        setLoading(true); 
         await confirmEtherTransaction(txHashRegistry);
         let trx_registry_receipt = await web3.eth.getTransactionReceipt(txHashRegistry);
+        show_toast('info', 'Your contract was deployed');
+        setLoading(false); 
    
         
         let contract_converted = contract.data[0].bin + getParameters(constructorArguments);
@@ -124,19 +122,26 @@ const DeployContract = () => {
         const transactionParametersContract = { from: window.ethereum.selectedAddress, data: contract_converted, };
         const txHashContract = await window.ethereum.request({ method: 'eth_sendTransaction', params: [transactionParametersContract], });
         
+        setLoading(true); 
         await confirmEtherTransaction(txHashContract);
         let trx_contract_receipt = await web3.eth.getTransactionReceipt(txHashContract);
+        show_toast('info', 'Your contract was deployed');
+        setLoading(false); 
 
-        let teste = new web3.eth.Contract(JSON.parse(contract.data[0].abi), trx_contract_receipt.contractAddress);
-        let teste2 = await teste.methods.get_selected().call();
-        console.log('selected Contract -> ',teste2)
+        // let teste = new web3.eth.Contract(JSON.parse(contract.data[0].abi), trx_contract_receipt.contractAddress);
+        // let teste2 = await teste.methods.get_selected().call();
+        // console.log('selected Contract -> ',teste2)
 
        let registy_contract = new web3.eth.Contract(JSON.parse(contract.data[2].abi), trx_registry_receipt.contractAddress);
 
        let spec_id_bytes32 = web3.utils.asciiToHex(specificationId);
-
+        
+       setLoading(true);   
        let response_new_mapping = await registy_contract.methods.new_mapping(trx_contract_receipt.contractAddress.trim(), spec_id_bytes32)  
                                             .send({from: window.web3.currentProvider.selectedAddress, gasPrice: '2000000000000' });
+        show_toast('info', 'Your contract was updated');
+        setLoading(false); 
+
 
         let obj_proxy = constructorArguments;
         
@@ -149,14 +154,17 @@ const DeployContract = () => {
         const transactionParametersProxy = { from: window.ethereum.selectedAddress, data: proxy_converted, };
         const txHashProxy = await window.ethereum.request({ method: 'eth_sendTransaction', params: [transactionParametersProxy], });
         
+        setLoading(true);   
         await confirmEtherTransaction(txHashProxy); 
+        show_toast('info', 'Your contract was updated');
+        setLoading(false); 
 
         let trx_contract_proxy = await web3.eth.getTransactionReceipt(txHashProxy);
 
         let proxy_contract = new web3.eth.Contract(JSON.parse(contract.data[1].abi), trx_contract_proxy.contractAddress);
         let response_new_proxy = await proxy_contract.methods.get_selected().call();
 
-        console.log('response_new_proxy -> ', response_new_proxy);
+        // console.log('response_new_proxy -> ', response_new_proxy);
 
         // save log
 
@@ -175,7 +183,15 @@ const DeployContract = () => {
             created_at: "2022-06-29T12:58:26.233Z"
         }
 
+        setLoading(true);   
         let log = await API.post(`savelog`, logs);
+        show_toast('info', 'Your was was saved');
+        setLoading(false); 
+
+        } catch(error) {
+            show_toast('error', 'There was an unexpected error');
+            setLoading(false);             
+        }
     }
 
 
@@ -190,6 +206,12 @@ const DeployContract = () => {
     }
     
     function check_data() {
+
+        if(window.ethereum == undefined){
+            show_toast('error', 'Your wallet is not connected');
+            return;
+        }
+
         if (specificationId.length === 0 ){
             show_toast('error', 'You should type a specification id');
             return true;
