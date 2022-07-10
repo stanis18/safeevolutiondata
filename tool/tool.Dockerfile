@@ -72,13 +72,19 @@ COPY ./verification-tool /home/back
 RUN cd /home/back && cargo build
 
 RUN mkdir /home/back/contracts/input
+RUN chmod -R 777 /home/back/contracts
 
 EXPOSE 3000
 EXPOSE 8000
 
 
-COPY run.sh /home/
+COPY run.sh /home
 
+RUN apt update
+RUN apt install -y sed
+RUN sed -i 's/\r$//' /home/run.sh
 RUN chmod +x ./home/run.sh
+
+RUN ls /home
 
 CMD ./home/run.sh
