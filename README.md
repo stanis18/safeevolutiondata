@@ -53,3 +53,5 @@ docker-compose up --build tool
 ```
 
 The tool can be accessed through the link: http://localhost:3000/#/
+
+To access the features of the tool it is necessary to have a metamask wallet. All instructions for creating, importing, and getting backgrounds are on the tool's documentation page.
